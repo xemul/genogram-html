@@ -285,12 +285,26 @@ def show_leveled(tree):
 
 		lvl["offsets"] = "S"
 
+	def bd_as_int(p):
+		if not "born" in p:
+			return 366 * 10000
+
+		def d_to_int(d, m, y):
+			return int(d) + 31 * int(m) + 366 * int(y)
+
+		s = p["born"].split('.')
+		if len(s) == 1:
+			return d_to_int(0, 6, s[0])
+		if len(s) == 2:
+			return d_to_int(15, s[0], s[1])
+		return d_to_int(s[0], s[1], s[2])
+
 
 	def do_parent_offsets(lvl):
 		off = 0
 		for t in lvl["g"]:
 			first = False
-			for p in t["people"]:
+			for p in sorted(t["people"], key=bd_as_int):
 				if not first:
 					n = p.get("name", "?")
 					foff = 0
@@ -354,13 +368,6 @@ def show_leveled(tree):
 	print("</head><body>")
 	print("<table border=0 cellspacing=0 cellpadding=0 align=\"center\">")
 
-	def bd_as_int(p):
-		if not "born" in p:
-			return 366 * 10000
-
-		s = p["born"].split('.')
-		return int(s[0]) + 31 * int(s[1]) + 366 * int(s[2])
-
 	def fill_line(l, fill, gap, ctx):
 		print("<tr>")
 		cnt = l["len"]
@@ -404,14 +411,17 @@ def show_leveled(tree):
 		bd = p.get("born", None)
 		dd = p.get("died", None)
 		if cnt > 16 or p["_grafted"]:
-			print(f"<small>{n}</small>")
-		else:
-			print(f"{n}")
-			if bd:
-				if dd:
-					print(f"<br>{bd}&ndash;{dd}")
-				else:
-					print(f"<br>{bd}")
+			print("<small>")
+		print(f"{n}")
+		if bd:
+			print("<small>")
+			if dd:
+				print(f"<br>{bd}&ndash;{dd}")
+			else:
+				print(f"<br>{bd}")
+			print("</small>")
+		if cnt > 16 or p["_grafted"]:
+			print("</small>")
 
 	def fill_conn(t):
 		print(f"<img src=\"img/conn-{t}.svg\"/>")
