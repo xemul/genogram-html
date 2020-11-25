@@ -390,7 +390,7 @@ def show_leveled(tree):
 						print("</td>")
 						loff = off
 
-				print("<td align=\"center\">")
+				print("<td align=\"center\" valign=\"middle\">")
 				fill(p, pi, len(t["people"]), cnt, ctx)
 				print("</td>")
 				loff += 1
@@ -408,19 +408,21 @@ def show_leveled(tree):
 		n = p.get("name", "?")
 		img = p.get("img", "img/no-photo.svg")
 		print(f"<img src=\"{img}\"/><br>")
-		bd = p.get("born", None)
-		dd = p.get("died", None)
 		if cnt > 16 or p["_grafted"]:
 			print("<small>")
 		print(f"{n}")
+		if cnt > 16 or p["_grafted"]:
+			print("</small>")
+
+	def fill_person_data(p, pi, pn, cnt, ctx):
+		bd = p.get("born", None)
+		dd = p.get("died", None)
 		if bd:
 			print("<small>")
 			if dd:
-				print(f"<br>{bd}&ndash;{dd}")
+				print(f"{bd}&ndash;{dd}")
 			else:
-				print(f"<br>{bd}")
-			print("</small>")
-		if cnt > 16 or p["_grafted"]:
+				print(f"{bd}")
 			print("</small>")
 
 	def fill_conn(t):
@@ -468,6 +470,7 @@ def show_leveled(tree):
 			fill_line(l, fill_parent_connectors, fill_parent_gap, pc_ctx)
 
 		fill_line(l, fill_person, fill_gap, None)
+		fill_line(l, fill_person_data, fill_gap, None)
 
 		if not l == levels[-1]:
 			fill_line(l, fill_kid_connectors, fill_gap, None)
