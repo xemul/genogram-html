@@ -368,6 +368,8 @@ def show_leveled(tree):
 	print("</head><body>")
 	print("<table border=0 cellspacing=0 cellpadding=0 align=\"center\">")
 
+	lastnames = {}
+
 	def fill_line(l, fill, gap, ctx):
 		print("<tr>")
 		cnt = l["len"]
@@ -395,6 +397,9 @@ def show_leveled(tree):
 				print("</td>")
 				loff += 1
 				pi += 1
+
+				if not p["_father"] and p["_family"]:
+					lastnames[p["_off"]] = p["_family"]["p"]
 
 		if loff < maxl:
 			print(f"<td colspan={maxl - loff}>")
@@ -474,6 +479,18 @@ def show_leveled(tree):
 
 		if not l == levels[-1]:
 			fill_line(l, fill_kid_connectors, fill_gap, None)
+
+	loff = 0
+	off = 0
+	print("<tr>")
+	for off in sorted(lastnames.keys()):
+		if loff < off:
+			print(f"<td colspan={off - loff}>&nbsp;</td>")
+			loff = off
+		lname = lastnames[off]
+		print(f"<td align=\"center\"><i>{lname}</i></td>")
+		loff += 1
+	print("</tr>")
 
 	print("</table>")
 	print("</body></html>")
