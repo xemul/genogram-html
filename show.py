@@ -279,7 +279,7 @@ def show_leveled(tree):
 	def do_straight_offsets(lvl, maxl):
 		off = int((maxl - lvl["len"]) / 2)
 		for t in lvl["g"]:
-			for p in t["people"]:
+			for p in sorted(t["people"], key=bd_as_int):
 				p["_off"] = off
 				off += 1
 
@@ -333,7 +333,7 @@ def show_leveled(tree):
 	def do_child_offsets(lvl):
 		off = 0
 		for t in lvl["g"]:
-			for p in t["people"]:
+			for p in sorted(t["people"], key=bd_as_int):
 				n = p.get("name", "?")
 				coff = p["_kids"][0]["_off"]
 				if coff > off:
@@ -343,26 +343,40 @@ def show_leveled(tree):
 				off += 1
 
 		lvl["offsets"] = "C"
+
+	li = find_longest(levels)
+	maxl = levels[li]["len"]
+	do_straight_offsets(levels[li], maxl)
+
+	i = li - 1
+	while i >= 0:
+		do_parent_offsets(levels[i])
+		i -= 1
+
+	i = li + 1
+	while i < len(levels):
+		do_child_offsets(levels[i])
+		i += 1
 				
 
-	maxl = None
-	while True:
-		i = find_longest(levels)
-		if i == -1:
-			break
-		if not maxl:
-			maxl = levels[i]["len"]
-
-		levels[i]["set"] = True
-		if i < len(levels) - 1 and levels[i + 1]["set"]:
-			do_parent_offsets(levels[i])
-			continue
-
-		if i > 0 and levels[i - 1]["set"]:
-			do_child_offsets(levels[i])
-			continue
-
-		do_straight_offsets(levels[i], maxl)
+#	maxl = None
+#	while True:
+#		i = find_longest(levels)
+#		if i == -1:
+#			break
+#		if not maxl:
+#			maxl = levels[i]["len"]
+#
+#		levels[i]["set"] = True
+#		if i < len(levels) - 1 and levels[i + 1]["set"]:
+#			do_parent_offsets(levels[i])
+#			continue
+#
+#		if i > 0 and levels[i - 1]["set"]:
+#			do_child_offsets(levels[i])
+#			continue
+#
+#		do_straight_offsets(levels[i], maxl)
 
 	print("<html><head>")
 	print("</head><body>")
@@ -434,6 +448,8 @@ def show_leveled(tree):
 		if plc:
 			print(f"{plc[0]}")
 
+		#off = p["_off"]
+		#print(f"{off}")
 		print("</small>")
 
 	def fill_conn(t):
