@@ -422,13 +422,19 @@ def show_leveled(tree):
 	def fill_person_data(p, pi, pn, cnt, ctx):
 		bd = p.get("born", None)
 		dd = p.get("died", None)
+		plc = p.get("places", [])
+
+		print("<small>")
 		if bd:
-			print("<small>")
 			if dd:
 				print(f"{bd}&ndash;{dd}")
 			else:
 				print(f"{bd}")
-			print("</small>")
+
+		if plc:
+			print(f"{plc[0]}")
+
+		print("</small>")
 
 	def fill_conn(t):
 		print(f"<img src=\"img/conn-{t}.svg\"/>")
