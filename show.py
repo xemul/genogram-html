@@ -291,14 +291,22 @@ def show_leveled(tree):
 	def show_p(p, off, w):
 		n = p.get("name", "?")
 		print("<td align=\"center\">")
-		img = p.get("img", "img/no-photo.svg")
-		print(f"<img src=\"{img}\"/><br>")
 		if not p["_grafted"]:
-			#print(f"{off}.{w}.{n}")
-			print(f"{n}")
+			img = p.get("img", "img/no-photo.svg")
+			print(f"<img src=\"{img}\"/><br>{n}")
 		else:
-			#print(f"<small>{off}.{w}.{n}</small>")
-			print(f"<small>{n}</small>")
+			img = p.get("img", "img/no-photo-small.svg")
+			print(f"<img src=\"{img}\"/><br><small>{n}</small>")
+		print("</td>")
+
+	def show_pcount(n):
+		print(f"<td align=\"center\" valign=\"bottom\">+{n}</td>")
+
+	def show_missed_siblings(ppl):
+		print("<td align=\"center\" valign=\"bottom\">+<br>")
+		for p in ppl:
+			n = p.get("name", "?")
+			print(f"{n}<br>")
 		print("</td>")
 
 	def show_nodes(nodes, width):
@@ -317,60 +325,107 @@ def show_leveled(tree):
 			o = node["_off"]
 			off = maybe_space(off, o)
 
+			def l_type(i, n):
+				if n == 1:
+					return 'single'
+				elif i == 0:
+					return 'first'
+				elif i == n - 1:
+					return 'last'
+				else:
+					return 'next'
+
 			if l > w:
 				# more people than available width
-				miss = 0
+				miss = []
+				pi = 0
 				for p in ppl:
 					if not p["_grafted"]:
 						if "father" in node or "mother" in node:
-							c_links.append({"off": off, "t": "single"})
+							c_links.append({"off": off, "t": l_type(pi, l)})
 						show_p(p, off, w)
 						infos.append({"off": off, "p": p})
 						off += 1
+						pi += 1
 					else:
-						miss += 1
+						miss.append(p)
 
-				if w >= 2:
-					print(f"<td>+{miss}</td>")
+				if w >= 2 and miss:
+					show_missed_siblings(miss)
+					c_links.append({"off": off, "t": l_type(l - 1, l)})
 					off += 1
 
 			else:
 				# have space for grafted guys
-				o += int((w - l)/2)
+				sp = w - l
+				sp_b = int(sp / 2)
+				sp_a = sp - sp_b
+
+				o += sp_b
+
+				def own_kids(n, d):
+					if d in n:
+						fp = n[d]
+						if "own_kids" in fp:
+							return sorted(fp["own_kids"]["people"], key=bd_as_int)
+					return None
+
+				x_ppl = own_kids(node, "father")
+				if x_ppl:
+					xl = len(x_ppl)
+					if xl <= sp_b:
+						off = maybe_space(off, o - xl)
+						pi = 0
+						for p in x_ppl:
+							show_p(p, off, w)
+							c_links.append({"off": off, "t": l_type(pi, xl)})
+							off += 1
+							pi += 1
+					elif sp_b >= 1:
+						show_pcount(xl)
+						off += 1
+
 				off = maybe_space(off, o)
 
 				pi = 0
 				for p in ppl:
 					if "father" in node or "mother" in node:
-						if l == 1:
-							lt = "single"
-						elif pi == 0:
-							lt = "first"
-						elif pi == l - 1:
-							lt = "last"
-						else:
-							lt = "next"
-						c_links.append({"off": off, "t": lt})
+						c_links.append({"off": off, "t": l_type(pi, l)})
 					show_p(p, off, w)
 					infos.append({"off": off, "p": p})
 					off += 1
 					pi += 1
 
+				x_ppl = own_kids(node, "mother")
+				if x_ppl:
+					xl = len(x_ppl)
+					if xl <= sp_a:
+						pi = 0
+						for p in x_ppl:
+							show_p(p, off, w)
+							c_links.append({"off": off, "t": l_type(pi, xl)})
+							off += 1
+							pi += 1
+					elif sp_a >= 1:
+						show_pcount(xl)
+						off += 1
+
 			grp += 1
 
 			if "father" in node:
 				fn = node["father"]
-				o = parent_off(fn)
+				po = parent_off(fn)
 				lt = "single"
 				if "mother" in node:
 					lt = "father"
-				p_links.append({"off": o, "t": lt})
+				p_links.append({"off": po, "t": lt, "up": o})
 				nxt.append(fn)
 			if "mother" in node:
 				mn = node["mother"]
-				o = parent_off(mn)
-				p_links.append({"off": o, "t": "mother"})
+				po = parent_off(mn)
+				p_links.append({"off": po, "t": "mother"})
 				nxt.append(mn)
+
 		off = maybe_space(off, width)
 		print("</tr>")
 
@@ -412,19 +467,27 @@ def show_leveled(tree):
 			print("<tr>")
 			off = 0
 			skip = False
+			skip_up = None
 			for l in p_links:
 				if not skip:
 					off = maybe_space(off, l["off"])
 				else:
 					while off < l["off"]:
-						print("<td><img src=\"img/conn-skip.svg\"/></td>")
+						if off == skip_up:
+							print("<td><img src=\"img/conn-skip-up.svg\"/></td>")
+						else:
+							print("<td><img src=\"img/conn-skip.svg\"/></td>")
 						off += 1
 					skip = False
 				t = l["t"]
-				print(f"<td><img src=\"img/conn-{t}.svg\"/></td>")
-				off += 1
 				if t == "father":
 					skip = True
+					skip_up = l["up"]
+					if skip_up == off:
+						t = "father-up"
+
+				print(f"<td><img src=\"img/conn-{t}.svg\"/></td>")
+				off += 1
 
 			off = maybe_space(off, width)
 
