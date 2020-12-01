@@ -168,6 +168,7 @@ def put_to_tree(p, node):
 
 	if "people" not in node:
 		node["people"] = []
+
 	node["people"].append(p)
 	p["_in_tree"] = node
 
@@ -231,8 +232,211 @@ for pid in people:
 	if not p["_in_tree"]:
 		graft_to_tree(p)
 
+def set_width_and_offset(node, off):
+	width = 0
+	if "father" in node:
+		width += set_width_and_offset(node["father"], off)
+	if "mother" in node:
+		width += set_width_and_offset(node["mother"], off + width)
+	if width == 0:
+		width = 1
+	node["_width"] = width
+	node["_off"] = off
+	return width
+
+set_width_and_offset(tree, 0)
+
+def bd_as_int(p):
+	if not "born" in p:
+		return 366 * 10000
+
+	def d_to_int(d, m, y):
+		return int(d) + 31 * int(m) + 366 * int(y)
+
+	s = p["born"].split('.')
+	if len(s) == 1:
+		return d_to_int(0, 6, s[0])
+	if len(s) == 2:
+		return d_to_int(15, s[0], s[1])
+	return d_to_int(s[0], s[1], s[2])
 
 def show_leveled(tree):
+	print("<html><head>")
+	print("</head><body>")
+	print("<table border=0 cellspacing=0 cellpadding=0 align=\"center\">")
+
+	def space(w):
+		print(f"<td colspan={w}>&nbsp;</\td>")
+
+	def maybe_space(off, o):
+		if off < o:
+			space(o - off)
+			return o
+		else:
+			return off
+
+	def parent_off(n):
+		o = n["_off"]
+		w = n["_width"]
+		l = len(n["people"])
+		if w >= l:
+			o += int((w - l)/2)
+		for p in sorted(n["people"], key=bd_as_int):
+			if p["_grafted"]:
+				o += 1
+			else:
+				break
+		return o
+
+	def show_p(p, off, w):
+		n = p.get("name", "?")
+		print("<td align=\"center\">")
+		img = p.get("img", "img/no-photo.svg")
+		print(f"<img src=\"{img}\"/><br>")
+		if not p["_grafted"]:
+			#print(f"{off}.{w}.{n}")
+			print(f"{n}")
+		else:
+			#print(f"<small>{off}.{w}.{n}</small>")
+			print(f"<small>{n}</small>")
+		print("</td>")
+
+	def show_nodes(nodes, width):
+		nxt = []
+		off = 0
+		infos = []
+		c_links = []
+		p_links = []
+		grp = 0
+		print("<tr>")
+		for node in nodes:
+			ppl = sorted(node["people"], key=bd_as_int)
+			w = node["_width"]
+			l = len(ppl)
+
+			o = node["_off"]
+			off = maybe_space(off, o)
+
+			if l > w:
+				# more people than available width
+				miss = 0
+				for p in ppl:
+					if not p["_grafted"]:
+						if "father" in node or "mother" in node:
+							c_links.append({"off": off, "t": "single"})
+						show_p(p, off, w)
+						infos.append({"off": off, "p": p})
+						off += 1
+					else:
+						miss += 1
+
+				if w >= 2:
+					print(f"<td>+{miss}</td>")
+					off += 1
+
+			else:
+				# have space for grafted guys
+				o += int((w - l)/2)
+				off = maybe_space(off, o)
+
+				pi = 0
+				for p in ppl:
+					if "father" in node or "mother" in node:
+						if l == 1:
+							lt = "single"
+						elif pi == 0:
+							lt = "first"
+						elif pi == l - 1:
+							lt = "last"
+						else:
+							lt = "next"
+						c_links.append({"off": off, "t": lt})
+					show_p(p, off, w)
+					infos.append({"off": off, "p": p})
+					off += 1
+					pi += 1
+
+			grp += 1
+
+			if "father" in node:
+				fn = node["father"]
+				o = parent_off(fn)
+				lt = "single"
+				if "mother" in node:
+					lt = "father"
+				p_links.append({"off": o, "t": lt})
+				nxt.append(fn)
+			if "mother" in node:
+				mn = node["mother"]
+				o = parent_off(mn)
+				p_links.append({"off": o, "t": "mother"})
+				nxt.append(mn)
+		off = maybe_space(off, width)
+		print("</tr>")
+
+		print("<tr>")
+		off = 0
+		for i in infos:
+			off = maybe_space(off, i["off"])
+			p = i["p"]
+			bd = p.get("born", None)
+			dd = p.get("died", None)
+			plc = p.get("places", [])
+			print("<td align=\"center\"><small>")
+			if bd:
+				if dd:
+					print(f"{bd}<br>{dd}")
+				else:
+					print(f"{bd}")
+
+			if plc:
+				p = plc[0].split()[0]
+				print(f"<br>{p}")
+			print("</small></td>")
+			off += 1
+
+		print("</tr>")
+
+		if nxt:
+			print("</tr>")
+			print("<tr>")
+			off = 0
+			for l in c_links:
+				off = maybe_space(off, l["off"])
+				t = l["t"]
+				print(f"<td><img src=\"img/conn-{t}.svg\"/></td>")
+				off += 1
+			off = maybe_space(off, width)
+			print("</tr>")
+
+			print("<tr>")
+			off = 0
+			skip = False
+			for l in p_links:
+				if not skip:
+					off = maybe_space(off, l["off"])
+				else:
+					while off < l["off"]:
+						print("<td><img src=\"img/conn-skip.svg\"/></td>")
+						off += 1
+					skip = False
+				t = l["t"]
+				print(f"<td><img src=\"img/conn-{t}.svg\"/></td>")
+				off += 1
+				if t == "father":
+					skip = True
+
+			off = maybe_space(off, width)
+
+			show_nodes(nxt, width)
+
+	show_nodes([tree], tree["_width"])
+
+	print("</table>")
+	print("</body></html>")
+
+
+def show_leveled_old(tree):
 	levels = []
 	lst = [ tree ]
 	while lst:
@@ -284,20 +488,6 @@ def show_leveled(tree):
 				off += 1
 
 		lvl["offsets"] = "S"
-
-	def bd_as_int(p):
-		if not "born" in p:
-			return 366 * 10000
-
-		def d_to_int(d, m, y):
-			return int(d) + 31 * int(m) + 366 * int(y)
-
-		s = p["born"].split('.')
-		if len(s) == 1:
-			return d_to_int(0, 6, s[0])
-		if len(s) == 2:
-			return d_to_int(15, s[0], s[1])
-		return d_to_int(s[0], s[1], s[2])
 
 
 	def do_parent_offsets(lvl):
