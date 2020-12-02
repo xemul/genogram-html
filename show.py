@@ -299,15 +299,15 @@ def show_leveled(tree):
 			print(f"<img src=\"{img}\"/><br><small>{n}</small>")
 		print("</td>")
 
-	def show_pcount(n):
-		print(f"<td align=\"center\" valign=\"bottom\">+{n}</td>")
-
 	def show_missed_siblings(ppl):
-		print("<td align=\"center\" valign=\"bottom\">+<br>")
-		for p in ppl:
-			n = p.get("name", "?")
-			print(f"{n}<br>")
-		print("</td>")
+		if len(ppl) > 4:
+			print(f"<td align=\"center\" valign=\"bottom\">+{len(ppl)}</td>")
+		else:
+			print("<td align=\"center\" valign=\"bottom\">")
+			for p in ppl:
+				n = p.get("name", "?")
+				print(f"{n}<br>")
+			print("</td>")
 
 	def show_nodes(nodes, width):
 		nxt = []
@@ -337,6 +337,8 @@ def show_leveled(tree):
 
 			if l > w:
 				# more people than available width
+				# print grafted as list
+				# skip step-siblings
 				miss = []
 				pi = 0
 				for p in ppl:
@@ -356,7 +358,8 @@ def show_leveled(tree):
 					off += 1
 
 			else:
-				# have space for grafted guys
+				# have space for everyone
+				# try to fit step-siblings as well
 				sp = w - l
 				sp_b = int(sp / 2)
 				sp_a = sp - sp_b
@@ -370,20 +373,26 @@ def show_leveled(tree):
 							return sorted(fp["own_kids"]["people"], key=bd_as_int)
 					return None
 
-				x_ppl = own_kids(node, "father")
-				if x_ppl:
-					xl = len(x_ppl)
-					if xl <= sp_b:
+				def show_step_siblings(ppl, sp, off):
+					xl = len(ppl)
+					if xl <= sp:
 						off = maybe_space(off, o - xl)
 						pi = 0
-						for p in x_ppl:
+						for p in ppl:
 							show_p(p, off, w)
 							c_links.append({"off": off, "t": l_type(pi, xl)})
 							off += 1
 							pi += 1
-					elif sp_b >= 1:
-						show_pcount(xl)
+					elif sp >= 1:
+						show_missed_siblings(ppl)
+						c_links.append({"off": off, "t": "single"})
 						off += 1
+
+					return off
+
+				x_ppl = own_kids(node, "father")
+				if x_ppl:
+					off = show_step_siblings(x_ppl, sp_b, off)
 
 				off = maybe_space(off, o)
 
@@ -398,17 +407,7 @@ def show_leveled(tree):
 
 				x_ppl = own_kids(node, "mother")
 				if x_ppl:
-					xl = len(x_ppl)
-					if xl <= sp_a:
-						pi = 0
-						for p in x_ppl:
-							show_p(p, off, w)
-							c_links.append({"off": off, "t": l_type(pi, xl)})
-							off += 1
-							pi += 1
-					elif sp_a >= 1:
-						show_pcount(xl)
-						off += 1
+					off = show_step_siblings(x_ppl, sp_a, off)
 
 			grp += 1
 
