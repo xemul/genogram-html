@@ -137,25 +137,12 @@ for pid in people:
 	if "_level" not in p:
 		raise "unleveled person"
 
-def gender(p):
-	if "name" not in p:
-		return "p"
-	if p["name"].endswith('а'):
-		return "f"
-	else:
-		return "m"
 
-def lastname_str(p):
+def lastname_str(p, pfx = "", sfx = ""):
 	if not p["_family"]:
-		return "?"
+		return ""
 	br = p["_family"]
-	return br[gender(p)]
-
-def full_name_str(p):
-	name = p.get("name", "?")
-	pname = p.get("patronymic", "")
-	lname = lastname_str(p)
-	return f"{lname} {name} {pname}"
+	return pfx + br['p'] + sfx
 
 
 tree = { }
@@ -293,7 +280,10 @@ def show_leveled(tree):
 		print("<td align=\"center\">")
 		if not p["_grafted"]:
 			img = p.get("img", "img/no-photo.svg")
-			print(f"<img src=\"{img}\"/><br>{n}")
+			ln = ''
+			if not "father" in p:
+				ln = lastname_str(p, "<br><i>", "</i>")
+			print(f"<img src=\"{img}\"/><br>{n}{ln}")
 		else:
 			img = p.get("img", "img/no-photo-small.svg")
 			print(f"<img src=\"{img}\"/><br><small>{n}</small>")
